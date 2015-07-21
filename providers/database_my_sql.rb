@@ -5,6 +5,7 @@ end
 def load_current_resource
   require 'mysql'
   @current_resource = Chef::Resource::ZabbixDatabase.new(@new_resource.dbname)
+  @current_resource.schema_only(@new_resource.schema_only)
   @current_resource.dbname(@new_resource.dbname)
   @current_resource.host(@new_resource.host)
   @current_resource.port(@new_resource.port)
@@ -82,8 +83,10 @@ def create_new_database
   mysql_database new_resource.dbname do
     connection root_connection
     notifies :run, 'execute[zabbix_populate_schema]', :immediately
-    notifies :run, 'execute[zabbix_populate_image]', :immediately
-    notifies :run, 'execute[zabbix_populate_data]', :immediately
+    if !new_resource.schema_only 
+      notifies :run, 'execute[zabbix_populate_image]', :immediately
+      notifies :run, 'execute[zabbix_populate_data]', :immediately
+    end
     notifies :create, "mysql_database_user[#{new_resource.username}]", :immediately
     notifies :grant, "mysql_database_user[#{new_resource.username}]", :immediately
     notifies :create, 'ruby_block[set_updated]', :immediately
@@ -99,21 +102,21 @@ def create_new_database
   sql_command = "#{executable} #{root_username} #{root_password} #{host} #{port} #{dbname}"
 
   zabbix_path = ::File.join(new_resource.source_dir, "zabbix-#{new_resource.server_version}")
-  sql_scripts = if new_resource.server_version.to_f < 2.0
-                  Chef::Log.info 'Version 1.x branch of zabbix in use'
-                  [
-                    ['zabbix_populate_schema', ::File.join(zabbix_path, 'create', 'schema', 'mysql.sql')],
-                    ['zabbix_populate_data', ::File.join(zabbix_path, 'create', 'data', 'data.sql')],
-                    ['zabbix_populate_image', ::File.join(zabbix_path, 'create', 'data', 'images_mysql.sql')],
-                  ]
-                else
-                  Chef::Log.info 'Version 2.x branch of zabbix in use'
-                  [
-                    ['zabbix_populate_schema', ::File.join(zabbix_path, 'database', 'mysql', 'schema.sql')],
-                    ['zabbix_populate_data', ::File.join(zabbix_path, 'database', 'mysql', 'data.sql')],
-                    ['zabbix_populate_image', ::File.join(zabbix_path, 'database', 'mysql', 'images.sql')],
-                  ]
-                end
+  if new_resource.server_version.to_f < 2.0
+    Chef::Log.info 'Version 1.x branch of zabbix in use'
+    sql_scripts ||= [['zabbix_populate_schema', ::File.join(zabbix_path, 'create', 'schema', 'mysql.sql')]]
+    if !new_resource.schema_only 
+      sql_scripts << ['zabbix_populate_data', ::File.join(zabbix_path, 'create', 'data', 'data.sql')]
+      sql_scripts << ['zabbix_populate_image', ::File.join(zabbix_path, 'create', 'data', 'images_mysql.sql')]
+    end
+  else
+    Chef::Log.info 'Version 2.x branch of zabbix in use'
+    sql_scripts ||= [['zabbix_populate_schema', ::File.join(zabbix_path, 'database', 'mysql', 'schema.sql')]]
+    if !new_resource.schema_only 
+      ['zabbix_populate_data', ::File.join(zabbix_path, 'database', 'mysql', 'data.sql')]
+      ['zabbix_populate_image', ::File.join(zabbix_path, 'database', 'mysql', 'images.sql')]
+    end
+  end
 
   sql_scripts.each do |script_spec|
     script_name = script_spec.first

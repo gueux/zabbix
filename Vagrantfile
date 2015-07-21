@@ -10,54 +10,69 @@ Vagrant.configure("2") do |config|
                     '--memory', 1024]
   end
 
-  config.vm.box = "Chef-CentOS-6.5"
-  config.vm.box_url = "http://opscode-vm-bento.s3.amazonaws.com/vagrant/virtualbox/opscode_centos-6.5_chef-provisionerless.box"
+  config.vm.box = "chef/ubuntu-14.04"
+  #config.vm.box_url = "http://opscode-vm-bento.s3.amazonaws.com/vagrant/virtualbox/opscode_centos-6.5_chef-provisionerless.box"
 
   config.vm.hostname = "zabbix-berkshelf"
   server_ip = "192.168.50.10"
   config.vm.network :private_network, ip: server_ip
+  config.ssh.insert_key = false
 
-  config.omnibus.chef_version = "11.6.2"
-  config.vm.provision :chef_solo do |chef|
+  config.trigger.before :reload, stdout: true do
+    puts "Remove 'synced_folders' file for #{@machine.name}"
+    `rm .vagrant/machines/#{@machine.name}/virtualbox/synced_folders`
+  end
+
+  config.omnibus.chef_version = :latest
+  config.vm.provision :chef_zero do |chef|
+    chef.nodes_path = 'fixtures/nodes'
     chef.json = {
-      :mysql => {
-        :server_root_password => 'rootpass',
-        :server_debian_password => 'debpass',
-        :server_repl_password => 'replpass'
-      },
-      'postgresql' => {
-        'password' => {
-          'postgres' => 'rootpass'
+      "th_mysql" => {
+        "service" => {
+          "data_dir" => "/var/lib/mysql-default",
+          "server_root_password" => "GlagDyn0"
+        },
+        "users" => {
+          "zabbix" => {
+            "password" => "password123",
+            "database_name" => "zabbix"
+          }
         }
       },
       'zabbix' => {
-        'agent' => {
-          'servers' => [server_ip],
-          'servers_active' => [server_ip]
-        },
-        'web' => {
-          'install_method' => 'apache',
-          'fqdn' => server_ip
-        },
         'server' => {
-          'install' => true,
-          'ipaddress' => server_ip
+          'version' => '2.4.0'
+        },
+        'proxy' => {
+          'enabled' => true,
+          'master' => 'mail.randrmusic.com',
+          'database' => {
+            'dbport' => '3306',
+            'dbname' => 'zabbix',
+            'dbuser' => 'zabbix',
+            'dbpassword' => 'password123'
+          }
         },
         'database' => {
-          #'dbport' => '5432',
-          #'install_method' => 'postgres',
+          'install_method' => 'mysql',
+          'schema_only' => true,
+          'dbport' => '3306',
+          'dbname' => 'zabbix',
+          'dbuser' => 'zabbix',
           'dbpassword' => 'password123'
-        }
+        },
+        'web' => {
+          'fqdn' => 'zabbix.vocvox.com',
+          'user' => 'Admin',
+          'password' => 'p45gh548GL4h'
+      }
       }
     }
 
-    chef.add_recipe "database::mysql"
-    chef.add_recipe "mysql::server"
+    chef.add_recipe "th_mysql"
     chef.add_recipe "zabbix"
     chef.add_recipe "zabbix::database"
-    chef.add_recipe "zabbix::server"
-    chef.add_recipe "zabbix::web"
-    chef.add_recipe "zabbix::agent_registration"
+    chef.add_recipe "zabbix::proxy_source"
 
     #chef.log_level = :debug
   end
