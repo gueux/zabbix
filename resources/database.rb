@@ -23,3 +23,5 @@ attribute :source_dir, :kind_of => String, :required => true
 attribute :install_dir, :kind_of => String, :required => true
 attribute :branch, :kind_of => String, :required => false
 attribute :version, :kind_of => String, :required => false
+
+attribute :schema_only, :kind_of => [TrueClass, FalseClass], :default => false, :required => false

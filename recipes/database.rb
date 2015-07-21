@@ -57,6 +57,7 @@ end
 zabbix_database node['zabbix']['database']['dbname'] do
   provider provider
   host node['zabbix']['database']['dbhost']
+  schema_only node['zabbix']['database']['schema_only']
   port node['zabbix']['database']['dbport'].to_i
   username node['zabbix']['database']['dbuser']
   password node['zabbix']['database']['dbpassword']

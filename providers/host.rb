@@ -210,7 +210,6 @@ action :update do
       existing_interfaces = host['interfaces'].map { |interface| Chef::Zabbix::API::HostInterface.from_api_response(interface).to_hash }
     end
     new_host_interfaces = determine_new_host_interfaces(existing_interfaces, params_incoming[:interfaces].map(&:to_hash))
->>>>>>> proxy-support
 
     host_update_request = {
       :method => 'host.update',

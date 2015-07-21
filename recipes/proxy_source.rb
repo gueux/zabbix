@@ -35,7 +35,8 @@ else
     return
   end
 end
-
+Chef::Log.warn("Master: #{node['zabbix']['proxy']['master']}")
+Chef::Log.warn("Master: #{master}")
 unless master
   Chef::Application.fatal! 'Cannot find Zabbix server (master) for this slave to register with'
 end
