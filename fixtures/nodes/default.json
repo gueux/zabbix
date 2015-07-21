@@ -1,0 +1,29 @@
+{
+  "name": "mail.randrmusic.com",
+  "chef_environment": "_default",
+  "normal": {
+    "ipaddress": "35.35.35.30",
+    "zabbix": {
+      "agent": {
+        "user_parameter": [
+          "mail.queue,(mailq |tail -n 1 |cut -d' ' -f5) || echo 0"
+        ]
+      },
+      "server": {
+        "configure_options": [
+          "--with-libcurl",
+          "--with-net-snmp",
+          "--with-postgresql"
+        ]
+      },
+      "web": {
+        "fqdn": "zabbix.vocvox.com",
+        "user": "admin123",
+        "password" "password123"
+      }
+    },
+  },
+  "run_list": [
+    "th_elasticsearch::default"
+  ]
+}
